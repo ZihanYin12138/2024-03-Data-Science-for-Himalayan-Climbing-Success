@@ -21,24 +21,28 @@
 ## 🧩 项目结构
 
 ```plaintext
-├── data/
+├── 01_data/
 │   ├── Himalayan_Database.zip       # 原始数据库（含4个DBF数据表）
 │   ├── peaks.csv                    # 山峰信息数据
 │   ├── exped.csv                    # 登山活动数据
 │   ├── members.csv                  # 登山者信息数据
 │   └── refer.csv                    # 文献索引数据
 │
-├── src/
+├── 02_src/
 │   ├── 01_Project_Report_Source_Code.Rmd     # 项目报告R Markdown源码（直接knit生成报告）
 │   └── 02_Project_References.bib             # 报告中引用的文献文件
 │
-├── reports/
+├── 03_reports/
 │   ├── 01_Project_Proposal.pdf               # 项目提案
 │   ├── 02_Project_Report.pdf                 # 项目主体报告（由.Rmd自动生成）
 │   └── 03_Project_Presentation_Slide.pdf     # 项目展示PPT
 │
-├── pictures/                                # 报告配图（不参与knit，仅作说明）
+├── 04_pictures/                              # 报告配图（不参与knit，仅作说明）
 │
+├── 05_resources/
+│   ├── 01_Appendix J - SQL Searches.pdf      # The Himalayan Database 官方示例 SQL 查询语句
+│   └── 02_Himalayan Database Guide.pdf       # The Himalayan Database 使用与访问说明文档
+│ 
 ├── LICENSE                                  # MIT License
 │
 ├── README.md                                # 英文版README
