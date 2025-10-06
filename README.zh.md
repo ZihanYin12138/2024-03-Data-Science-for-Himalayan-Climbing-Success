@@ -106,4 +106,4 @@ Tene, O., & Polonetsky, J. (2021). *Big Data Ethics: Balancing Risk and Innovati
 
 ---
 
-*Project completed as part of FIT5145: Foundations of Data Science at the Monash University, Semester 1, 2024.*
+*本项目完成于蒙纳士大学（Monash University） 2024 年第一学期课程 FIT5145: Foundations of Data Science。*
