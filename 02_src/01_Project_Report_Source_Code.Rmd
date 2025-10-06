@@ -1,0 +1,1151 @@
+---
+title: "FIT5145 Data Science Project"
+author: "Zihan Yin"
+date: '2024-03-25'
+output:
+  pdf_document:
+    latex_engine: xelatex
+  word_document: default
+header-includes:
+- \usepackage{fontspec}
+- \setmonofont{Consolas}
+fontsize: 11pt
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  include = FALSE, 
+  warning = FALSE, 
+  message = FALSE, 
+  out.width="70%", 
+  fig.align='center'
+)
+```
+
+```{r}
+# Because of time constraints and the fact that the quality of these datasets 
+# was hit and miss, I didn't get around to optimising the quality of the code 
+# and writing comments. Please forgive me.
+```
+
+```{r library}
+library(tidyverse)
+library(foreign)
+library(visdat)
+library(naniar)
+library(simputation)
+library(hms)
+library(knitr)
+```
+
+```{r downloading datasets, warning=FALSE}
+# this is the url of the needed zip file
+url <- "https://www.himalayandatabase.com/downloads/Himalayan%20Database.zip"
+
+# this the destination path (relative)
+dest_dir <- "Himalayan_Database.zip"
+
+# download the zip file from the url to the destination path
+download.file(url, dest_dir)
+
+# unzip the file to the working directory
+unzip(dest_dir)
+
+exped <- as_tibble(
+  read.dbf("Himalayan Database/HIMDATA/exped.dbf", as.is = TRUE)
+)
+
+peaks <- as_tibble(
+  read.dbf("Himalayan Database/HIMDATA/peaks.dbf", as.is = TRUE)
+)
+
+members <- as_tibble(
+  read.dbf("Himalayan Database/HIMDATA/members.dbf", as.is = TRUE)
+)
+
+refer <- as_tibble(
+  read.dbf("Himalayan Database/HIMDATA/refer.dbf", as.is = TRUE)
+)
+```
+
+# Project Description
+
+**Domain**: Data Science in Himalayan Mountaineering
+
+**Topic**: Application of Data Science in Improving the Summit Success Rate of Himalayas: Analysing Key Factors for Climbers' Success
+
+As mountain climbing in Nepal and the wider Himalayan region grows in popularity, optimizing mountaineering strategies and enhancing safety awareness have become crucial. This project will use machine learning and statistical analysis to assess key factors influencing summit success and safety. The goal is to provide actionable insights and recommendations that improve success rates and reduce risks, benefiting the global mountaineering community.
+
+**Note**: The topic is the same as that of Assignment 1, but the content of Assignment 1 is shorten here.
+
+## Project Objectives
+
+-   Identify and quantify key factors influencing summit success using data science, offering targeted advice for climbers.
+
+-   Raise climbers' awareness of potential risks and suggest effective strategies to reduce the risk of injury or death.
+
+## Data Science Roles & Responsibilities
+
+1.  **Project Manager:** Oversees project planning, coordination, resource management, and stakeholder communication.
+
+2.  **Business Analyst:** Gathers requirements from climbers and stakeholders, facilitating communication across teams.
+
+3.  **Record Collector & Data Entry Clerk:** Collects, verifies, and digitizes data ensuring its quality and accessibility [@salisbury2017team].
+
+4.  **System Architect & Data Engineer:** Designs and implements the infrastructure for data processing and analysis.
+
+5.  **Data Analyst & Scientist:** Performs exploratory analyses and builds predictive models to extract insights and make data-driven recommendations.
+
+# Business Model
+
+The results of this project may have potential or direct impact on the following areas:
+
+-   Mountaineering expeditions in the Himalayan region
+-   Mountaineering equipment development
+-   Academic research on high altitude activities
+-   Insurance product design, etc.
+
+## Values & Stakeholders
+
+1.  **Climbers and Teams:** Receive customized preparation and safety strategy advice.
+
+2.  **Mountaineering Companies:** Improve customer experiences and safety outcomes, adjusting services based on analytical insights.
+
+3.  **Academic and Research Institutions:** Gain access to valuable data for studying physiological impacts and environmental factors.
+
+4.  **Government and Safety Regulators:** Utilize findings to refine safety regulations and rescue operations.
+
+## Project Challenges
+
+1.  **Data Integrity:** Address issues related to incomplete or inaccurate data due to various factors such as climber reticence or environmental conditions.
+
+2.  **Technical Complexity:** Manage the challenges of complex data processing and model accuracy enhancement.
+
+3.  **Terminological Barriers:** Overcome the jargon and specialized knowledge required for effective data interpretation.
+
+4.  **Stakeholder Resistance:** Navigate potential resistance from entities that may perceive project outcomes as threats to their operational practices.
+
+# Characterising & Analysing Data
+
+## Data Characteristics & Softwares
+
+-   **Data sources & volume**:
+
+    There' re 4 datasets from The Himalayan Database [@salisbury2017expedition] and the first 3 of them are relevant to this project.
+
+    |     | Dataset Name  |    Description     | #Rows  | #Columns |   Size   |
+    |:---:|:-------------:|:------------------:|:------:|:--------:|:--------:|
+    |  1  |  `peaks.csv`  |   Peaks records    |  479   |    25    |  112 KB  |
+    |  2  |  `exped.csv`  | Expedition records | 11,184 |    66    | 5773 KB  |
+    |  3  | `members.csv` |   Member records   | 85,336 |    78    | 34226 KB |
+    |  4  |  `refer.csv`  | Literature records | 15,586 |    13    | 1919 KB  |
+
+-   **Data velocity**:
+
+    The data covers all expeditions from 1905 through Spring-Summer 2023 [@salisbury2017history].
+
+    |    Dataset    | Change Velocity                        |
+    |:-------------:|----------------------------------------|
+    |  `peaks.csv`  | Unknown                                |
+    |  `exped.csv`  | 278 expeditions were recorded in 2022. |
+    | `members.csv` | 3,290 members were recorded in 2022.   |
+
+-   **Data variety**:
+
+    |    Dataset    | Feature Types                                                                        |
+    |:------------------------:|----------------------------------------------|
+    |  `peaks.csv`  | character, integer, numeric, logical, text, nominal factor                           |
+    |  `exped.csv`  | character, integer, numeric, logical, text, nominal factor, ordinal factor, datetime |
+    | `members.csv` | character, integer, numeric, logical, text, nominal factor, datetime                 |
+
+-   **Data veracity**:
+
+    1.  Most of the feature names are difficult to understand meanings and need to be renamed.
+
+    2.  There' s a lot of redundancy in the database.
+
+    3.  Several features have numerous missing values, even close to 100%, requiring a lot of work to process missing values.
+
+    4.  Several nominal factor features are inconsistently recorded making them difficult to be analysed, requiring lots of text processing.
+
+        Take the example of the mountaineering company "Arun Treks":
+
+    ```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+    exped %>% 
+      mutate(AGENCY = factor(AGENCY)) %>% 
+      filter(str_detect(AGENCY, "Arun Treks")) %>% 
+      group_by(AGENCY) %>% 
+      summarise(n = n()) %>% 
+      select(AGENCY) %>% 
+      kable()
+    ```
+
+-   **Software**:
+
+    For data access, the Himalayan Database website provides a `.zip` file containing an executable file `Himal 2.71.exe`, which allows users to query the database using the SQL language [@salisbury2023himal]. The website also provides online querying of a subset version of the database for users with tablets and smart-phones. The database can also be accessed using a DBMS such as MySQL Workbench. For convenience, we read the 4 `.dbf` files in the `.zip` file, which are the 4 datasets introduced above, directly using R language.
+
+    For data processing, analysing and visualization, we use R or Python because these 4 datasets belong to the category of small data, far from the scale of big data, and R & Python are competent enough.
+
+## Data Analysis Methods
+
+**Data Pre-processing:**
+
+-   **Feature Selection and Merging**: Select features directly related to the predictive label and merge certain features to reduce redundancy.
+
+-   **Data Type Conversion**: Adjust features to suitable data types to fit model requirements.
+
+-   **Missing Value Handling**: Fill in missing values to ensure data completeness.
+
+-   **Data Cleaning**: Remove records that are not suitable for the model and those that may cause data joining errors.
+
+-   **Data Joining**: Join the `peaks`, `exped`, and `members` datasets into a single main dataset for subsequent analysis.
+
+**Reasons for Choosing Random Forest Model:**
+
+-   **Versatility**: Random forest can adapt to various data types and analysis problems, handling different data characteristics effectively.
+
+-   **Automatic Data Issue Handling**: The model can efficiently manage outliers and missing values, suitable for the varied quality of data in this project.
+
+-   **Embedding Feature Selection**: The model automatically assesses feature importance during training, helping to reduce overfitting and highlight key factors.
+
+-   **Importance Evaluation**: Feature importance is assessed through the decrease in accuracy, visually demonstrating the impact of features on prediction success, aligning with the project's goal to identify key success factors.
+
+**Model Parameter Tuning and Performance Evaluation:**
+
+-   **Parameter Tuning**: Optimize the main parameters of the random forest, such as the number of trees and maximum depth, through grid search techniques to ensure the model is neither overfitting nor underfitting.
+
+-   **Performance Evaluation**: Use metrics such as accuracy and the AUC-ROC curve to evaluate the predictive performance of the model, ensuring the reliability and accurate identification of key factors.
+
+**Feature Visualization:**
+
+-   **Visualizing the Relationship Between Key Features and Labels**: Display the relationship between key features identified by the model and summit success rates to intuitively understand the impact of each feature. This step not only enhances the model's interpretability but also facilitates the presentation of analysis results to non-technical stakeholders.
+
+## Demonstration
+
+### Data Pre-processing:
+
+Conducting the pre-processing steps we describe above, we end up with a main dataset:
+
+-   Number of rows: 78,711
+
+-   Number of columns: 27
+
+-   label feature: `if_success`
+
+-   Each row of data describes a record of one expedition by one climber.
+
+| Feature                      | Description                                                                                                  |
+|--------------------------|----------------------------------------------|
+| `height`                     | The height of the peak                                                                                       |
+| `himal`                      | The mountain range in which the peak is located [@salisbury2021himalaya]                                     |
+| `region`                     | The region in which the peak is located                                                                      |
+| `mt_climbing_status`         | Whether the peak is unclimbed                                                                                |
+| `first_ascent_year`          | The year the peak was first climbed                                                                          |
+| `if_open`                    | Whether the peak is on the list of peaks approved by the Government of Nepal for mountaineering expeditions. |
+| `year`                       | The year in which the climber climbed the peak                                                               |
+| `season`                     | The season in which the climber climbed the peak                                                             |
+| `age`                        | Climber 's age                                                                                               |
+| `sex`                        | Climber 's gender                                                                                            |
+| `race`                       | Climber 's ethnicity (Sherpa/Tibetan or not)                                                                 |
+| `n_team_members`             | Number of members in the climber's team                                                                      |
+| `n_camps_above_BC`           | Number of camps used by the climber's team                                                                   |
+| `length_fixed_rope`          | Length of fixed ropes used by the climber's team                                                             |
+| `level_oxygen_usage`         | Amount level of oxygen used by the climber                                                                   |
+| `level_team_hired_personnel` | Proportion of hired guides in the climber's team                                                             |
+| `if_commercial_route`        | Whether the route is a commercial route                                                                      |
+| `if_success`                 | Whether the climber was successful in reaching the summit                                                    |
+| ......                       | ......                                                                                                       |
+
+```{r overview}
+glimpse(exped)
+```
+
+```{r}
+# rename
+exped <- exped %>% 
+  rename(
+    expedition_id = EXPID,
+    peak_id = PEAKID,
+    year = YEAR,
+    season = SEASON,
+    exp_host_country = HOST,
+    team_principle_nation = NATION,
+    leadership = LEADERS,
+    expedition_sponsor = SPONSOR,
+    success_claimed = CLAIMED,
+    success_disputed = DISPUTED,
+    other_countries = COUNTRIES,
+    approach_march = APPROACH,
+    date_arrived_at_BC = BCDATE,
+    date_reached_summit = SMTDATE,
+    time_reached_summit = SMTTIME,
+    days_to_summit = SMTDAYS,
+    days_total = TOTDAYS,
+    date_terminated = TERMDATE,
+    reason_terminated = TERMREASON,
+    termination_details = TERMNOTE,
+    expedition_high_point = HIGHPOINT,
+    traverse = TRAVERSE,
+    ski_descent = SKI,
+    parapente_descent = PARAPENTE,
+    n_camps_above_BC = CAMPS,
+    length_fixed_rope = ROPE,
+    
+    nbr_members = TOTMEMBERS,
+    nbr_members_on_summit = SMTMEMBERS,
+    nbr_member_deaths = MDEATHS,
+    nbr_hired_personnel_above_BC = TOTHIRED,
+    nbr_hired_personnel_on_summit = SMTHIRED,
+    nbr_hired_personnel_deaths = HDEATHS,
+    no_hired_personnel_used = NOHIRED,
+    
+    oxygen_used = O2USED,
+    oxygen_not_used = O2NONE,
+    oxygen_climbing = O2CLIMB,
+    oxygen_descending = O2DESCENT,
+    oxygen_sleeping = O2SLEEP,
+    oxygen_used_medically = O2MEDICAL,
+    oxygen_taken_but_not_used = O2TAKEN,
+    oxygen_use_unknown = O2UNKWN,
+    other_summits = OTHERSMTS,
+    campsite_details = CAMPSITES,
+    route_details = ROUTEMEMO,
+    accidents = ACCIDENTS,
+    achievements = ACHIEVMENT,
+    trekking_agency = AGENCY,
+    if_commercial_route = COMRTE,
+    standard_route_for_8000m = STDRTE,
+    route_info_with_primary_exp = PRIMRTE,
+    member_info_with_primary_exp = PRIMMEM,
+    literature_info_with_primary_exp = PRIMREF,
+    primary_expedition_id = PRIMID,
+    internal_consistency_check = CHKSUM,
+    
+    climbing_route = ROUTE1,
+    climbing_route.2 = ROUTE2,
+    climbing_route.3 = ROUTE3,
+    climbing_route.4 = ROUTE4,
+    success_on_route.1 = SUCCESS1,
+    success_on_route.2 = SUCCESS2,
+    success_on_route.3 = SUCCESS3,
+    success_on_route.4 = SUCCESS4,
+    ascent_numbers_for_route.1 = ASCENT1,
+    ascent_numbers_for_route.2 = ASCENT2,
+    ascent_numbers_for_route.3 = ASCENT3,
+    ascent_numbers_for_route.4 = ASCENT4,
+  )
+
+# select
+useless_features_for_topic = c(
+  "termination_details", 
+  "date_arrived_at_BC",
+  "date_reached_summit",
+  "date_terminated",
+  "other_countries",
+  "route_details",
+  "leadership",
+  "approach_march",
+  "other_summits",
+  "campsite_details",
+  "achievements",
+  "success_claimed",
+  "success_disputed",
+  "achievements",
+  "accidents",
+  "traverse",
+  "ski_descent",
+  "parapente_descent",
+  "reason_terminated",
+  "expedition_high_point",
+  "expedition_sponsor",
+  "time_reached_summit",
+  'oxygen_used',
+  'oxygen_not_used',
+  'oxygen_climbing',
+  'oxygen_descending',
+  'oxygen_sleeping',
+  'oxygen_used_medically',
+  'oxygen_taken_but_not_used',
+  'oxygen_use_unknown',
+  
+  "route_info_with_primary_exp",
+  "member_info_with_primary_exp",
+  "literature_info_with_primary_exp",
+  "primary_expedition_id",
+  "internal_consistency_check",
+  
+  "climbing_route.2",
+  "climbing_route.3",
+  "climbing_route.4",
+  "success_on_route.1",
+  "success_on_route.2",
+  "success_on_route.3",
+  "success_on_route.4",
+  "ascent_numbers_for_route.1",
+  "ascent_numbers_for_route.2",
+  "ascent_numbers_for_route.3",
+  "ascent_numbers_for_route.4"
+)
+
+exped <- exped %>% select(- all_of(useless_features_for_topic))
+```
+
+```{r feature engineering}
+# convert data type
+features_about_hired_personnel <- c(
+  'nbr_members',
+  'nbr_members_on_summit',
+  'nbr_member_deaths',
+  'nbr_hired_personnel_above_BC',
+  'nbr_hired_personnel_on_summit',
+  'nbr_hired_personnel_deaths',
+  'no_hired_personnel_used'
+)
+
+exped <- exped %>% 
+  mutate(
+    n_team_members = nbr_members,
+    rate_summit = replace_na(round(nbr_members_on_summit / nbr_members, digits = 2), replace = 0),
+    rate_death = replace_na(round(nbr_member_deaths / nbr_members, digits = 2), replace = 0),
+    level_team_hired_personnel = replace_na(
+      round(nbr_hired_personnel_above_BC / nbr_members, digits = 2), replace = 0
+    )
+  ) %>% 
+  select(- all_of(features_about_hired_personnel))
+
+exped$year <- parse_integer(exped$year)
+
+exped <- exped %>% mutate(
+  climbing_route = str_c(peak_id, " - ", climbing_route)
+) 
+
+exped <- exped %>% 
+  mutate(if_commercial_route = (if_commercial_route | standard_route_for_8000m)) %>% 
+  select(- standard_route_for_8000m)
+
+exped$trekking_agency <- factor(exped$trekking_agency, exclude = NULL)
+exped$team_principle_nation <- factor(exped$team_principle_nation)
+exped$climbing_route <- factor(exped$climbing_route, exclude = NULL)
+
+exped$if_commercial_route <- factor(exped$if_commercial_route)
+exped <- impute_cart(exped, if_commercial_route ~ climbing_route)
+
+exped$season <- exped$season %>% 
+  factor() %>% 
+  fct_recode(
+    "Unknown" = "0",
+    "Spring" = "1",
+    "Summer" = "2",
+    "Autumn" = "3",
+    "Winter" = "4"
+  )
+
+exped$exp_host_country <- exped$exp_host_country %>% 
+  factor() %>% 
+  fct_recode(
+    "Unknown" = "0",
+    "Nepal" = "1",
+    "China" = "2",
+    "India" = "3"
+  ) 
+
+glimpse(exped)
+```
+
+```{r}
+vis_dat(exped)
+vis_miss(exped, sort_miss = TRUE)
+```
+
+```{r missing values}
+miss <- miss_summary(exped)
+
+miss
+miss$miss_case_table
+miss$miss_var_table
+miss$miss_var_summary
+miss$miss_case_summary
+```
+
+```{r}
+glimpse(peaks)
+```
+
+```{r rename and select features}
+# rename
+peaks <- peaks %>% 
+  rename(
+    peak_id = PEAKID,
+    peak_name = PKNAME,
+    peak_name.2 = PKNAME2,
+    location = LOCATION,
+    height = HEIGHTM,
+    height_ft = HEIGHTF,
+    himal = HIMAL,
+    region = REGION,
+    if_open = OPEN,
+    if_unlisted = UNLISTED,
+    if_trekking_peak = TREKKING,
+    trekking_year = TREKYEAR,
+    restrict_message = RESTRICT,
+    mt_host_country = PHOST,
+    mt_climbing_status = PSTATUS,
+    peak_note = PEAKMEMO,
+    first_ascent_year = PYEAR,
+    first_ascent_season = PSEASON,
+    first_ascent_expedition_id = PEXPID,
+    first_ascent_date = PSMTDATE,
+    first_ascent_country = PCOUNTRY,
+    first_ascent_summiters = PSUMMITERS,
+    first_ascent_comments = PSMTNOTE,
+    chronology_references = REFERMEMO,
+    photo_references = PHOTOMEMO
+  )
+
+# select
+useless_features_for_topic = c(
+  'peak_name.2', 
+  'height_ft', 
+  'trekking_year', 
+  'restrict_message', 
+  'peak_note', 
+  # 'first_ascent_year',
+  'first_ascent_summiters', 
+  'first_ascent_comments', 
+  'first_ascent_season', 
+  'first_ascent_date', 
+  'first_ascent_expedition_id', 
+  'first_ascent_country', 
+  'location', 
+  'chronology_references', 
+  'photo_references'
+)
+
+peaks <- peaks %>% select(- all_of(useless_features_for_topic))
+
+# convert data type
+peaks$himal <- peaks$himal %>% 
+  factor() %>% 
+  fct_recode(
+    "Unclassified" = "0",
+    "Annapurna" = "1",
+    "Api/Byas Risi/Guras" = "2",
+    "Damodar" = "3",
+    "Dhaulagiri" = "4",
+    "Ganesh/Shringi" = "5",
+    "Janak/Ohmi Kangri" = "6",
+    "Jongsang" = "7",
+    "Jugal" = "8",
+    "Kangchenjunga/Simhalila" = "9",
+    "Kanjiroba" = "10",
+    "Kanti/Palchung" = "11",
+    "Khumbu" = "12",
+    "Langtang" = "13",
+    "Makalu" = "14",
+    "Manaslu/Mansiri" = "15",
+    "Mukut/Mustang" = "16",
+    "Nalakankar/Chandi/Changla" = "17",
+    "Peri" = "18",
+    "Rolwaling" = "19",
+    "Saipal" = "20"
+  ) 
+
+peaks$region <- peaks$region %>% 
+  factor() %>% 
+  fct_recode(
+    "Unclassified" = "0",
+    "Kangchenjunga-Janak" = "1",
+    "Khumbu-Rolwaling-Makalu" = "2",
+    "Langtang-Jugal" = "3",
+    "Manaslu-Ganesh" = "4",
+    "Annapurna-Damodar-Peri" = "5",
+    "Dhaulagiri-Mukut" = "6",
+    "Kanjiroba-Far West" = "7"
+  )
+
+peaks$mt_host_country <- peaks$mt_host_country%>% 
+  factor() %>% 
+  fct_recode(
+    "Unclassified" = "0",
+    "Nepal only" = "1",
+    "China only" = "2",
+    "India only" = "3",
+    "Nepal & China" = "4",
+    "Nepal & India" = "5",
+    "Nepal, China & India" = "6"
+  ) 
+  
+peaks$mt_climbing_status <- peaks$mt_climbing_status %>% 
+  factor() %>% 
+  fct_recode(
+    "Unknown" = "0",
+    "Unclimbed" = "1",
+    "Climbed" = "2"
+  )
+
+peaks$first_ascent_year <- impute_mean(parse_integer(peaks$first_ascent_year))
+
+glimpse(peaks)
+```
+
+```{r}
+vis_dat(peaks)
+vis_miss(peaks, sort_miss = TRUE)
+```
+
+```{r}
+miss <- miss_summary(peaks)
+
+miss
+miss$miss_case_table
+miss$miss_var_table
+miss$miss_var_summary
+miss$miss_case_summary
+```
+
+```{r}
+glimpse(members)
+```
+
+```{r select and rename}
+members <- members %>% 
+  rename(
+    expedition_id = EXPID,
+    member_id = MEMBID,
+    peak_id = PEAKID,
+  )
+
+useless_features_for_topic <- c(
+  "FNAME", 
+  "LNAME",
+  "AGE",
+  "BIRTHDATE",
+  "YOB",
+  "RESIDENCE",
+  "STATUS",
+  "MHIGHPT",
+  "HCN",
+  "MCHKSUM",
+  
+  "MROUTE1",
+  "MROUTE2",
+  "MROUTE3",
+  
+  "MASCENT1",
+  "MASCENT2",
+  "MASCENT3",
+  
+  "MSMTNOTE1",
+  "MSMTNOTE2",
+  "MSMTNOTE3",
+  
+  "MSMTDATE1",
+  "MSMTDATE2",
+  "MSMTDATE3",
+  
+  "MSMTTIME2",
+  "MSMTTIME3",
+  
+  "INJURYDATE",
+  "DEATHDATE",
+  "DEATHNOTE",
+  
+  "NECROLOGY",
+  "MEMBERMEMO",
+  "MO2NOTE",
+  "DEATHRTE"
+)
+
+members <- members %>% 
+  select(- useless_features_for_topic)
+
+members <- members %>% 
+  rename(
+    year = MYEAR,
+    season = MSEASON,
+    sex = SEX,
+    age = CALCAGE,
+    citizen = CITIZEN,
+    occupation = OCCUPATION,
+    if_leader = LEADER,
+    if_deputy_leader = DEPUTY,
+    if_BC_only = BCONLY,
+    if_not_to_bc = NOTTOBC,
+    if_support_member = SUPPORT,
+    if_disabled = DISABLED,
+    if_hired_staff = HIRED,
+    if_success = MSUCCESS,
+    if_solo = MSOLO,
+    if_traverse = MTRAVERSE,
+    if_ski_descent = MSKI,
+    if_parapente_descent = MPARAPENTE,
+    if_speed_ascent = MSPEED,
+    personal_hight_pt = MPERHIGHPT,
+    summit_time = MSMTTIME1,
+    oxygen_used = MO2USED,
+    oxygen_not_used = MO2NONE,
+    oxygen_climbing = MO2CLIMB,
+    oxygen_descending = MO2DESCENT,
+    oxygen_sleeping = MO2SLEEP,
+    oxygen_used_medically = MO2MEDICAL
+  )
+```
+
+```{r convert}
+members$year <- parse_integer(members$year)
+
+members$season <- members$season %>%
+  factor() %>%
+  fct_recode(
+    "Unknown" = "0",
+    "Spring" = "1",
+    "Summer" = "2",
+    "Autumn" = "3",
+    "Winter" = "4"
+  )
+
+members$sex <- members$sex %>% 
+  factor() %>% 
+  fct_recode(
+    "Male" = "M",
+    "Female" = "F"
+  )
+
+members <- members %>% filter(!if_any(sex, is.na))
+
+members$citizen <- members$citizen %>% factor(exclude = NULL)
+
+members$occupation <- members$occupation %>% factor(exclude = NULL)
+
+members <- members %>%
+  mutate(
+    race = case_when(
+      SHERPA ~ "Sherpa",
+      TIBETAN ~ "Tibetan",
+      TRUE ~ "Others"
+    )
+  ) %>% 
+  select(- SHERPA, -TIBETAN)
+
+members$race <- members$race %>% factor()
+
+members <- members %>%
+  filter(!MCLAIMED) %>%
+  select(- MCLAIMED, - MDISPUTED)
+
+members$summit_time <- parse_time(members$summit_time, "%H%M")
+members$summit_time <- as.hms(impute_mean(as.numeric(as.hms(members$summit_time))))
+
+members <- members %>% 
+  mutate(
+    if_speed_ascent = replace_na(if_speed_ascent, replace = FALSE),
+    personal_hight_pt = ifelse(
+      personal_hight_pt == 0, 
+      mean(personal_hight_pt[personal_hight_pt != 0], na.rm = TRUE), 
+      personal_hight_pt
+    )
+  )
+
+features_about_oxygen <- c(
+  'oxygen_used',
+  'oxygen_not_used',
+  'oxygen_climbing',
+  'oxygen_descending',
+  'oxygen_sleeping',
+  'oxygen_used_medically'
+)
+
+members <- members %>%
+  mutate(
+    level_oxygen_usage =
+      oxygen_climbing +
+      oxygen_descending +
+      oxygen_sleeping +
+      oxygen_used_medically
+  ) %>%
+  select(- all_of(features_about_oxygen))
+
+members <- members %>% 
+  filter(!(if_BC_only | if_not_to_bc | if_support_member)) %>% 
+  select(- if_BC_only, - if_not_to_bc, - if_support_member)
+
+glimpse(members)
+```
+
+```{r}
+vis_dat(members %>% sample_frac(0.1))
+vis_miss(members %>% sample_frac(0.1), sort_miss = TRUE)
+```
+
+```{r}
+miss <- miss_summary(members)
+
+miss
+miss$miss_case_table
+miss$miss_var_table
+miss$miss_var_summary
+miss$miss_case_summary
+```
+
+```{r}
+# Here are 2 instances having a same `expedition_id`, which impedes join
+# Remove one of them
+exped %>% 
+  group_by(expedition_id) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n))
+
+exped %>% filter(expedition_id == "KANG10101")
+exped <- exped %>% filter(!(expedition_id == "KANG10101" & year == 1910))
+members <- members %>% filter(!(expedition_id == "KANG10101" & year == 1910))
+
+exped %>% filter(expedition_id == "EVER21101")
+exped <- exped %>% filter(!(expedition_id == "EVER21101" & year == 1921))
+members <- members %>% filter(!(expedition_id == "EVER21101" & year == 1921))
+
+exped %>% filter(expedition_id == "EVER22101")
+exped <- exped %>% filter(!(expedition_id == "EVER22101" & year == 1922))
+members <- members %>% filter(!(expedition_id == "EVER22101" & year == 1922))
+
+
+# Create the main dataset
+keys = c("expedition_id", "peak_id", "year", "season")
+
+main_data <- members %>% 
+  left_join(exped, by = keys) %>% 
+  left_join(peaks, by = "peak_id")
+
+main_data
+```
+
+```{r}
+features_for_mod.1 <- c(
+  'height',
+  'himal',
+  'region',
+  'if_open',
+  'mt_climbing_status',
+  'first_ascent_year',
+  
+  'year',
+  'season',
+  'n_camps_above_BC',
+  'length_fixed_rope',
+  'if_commercial_route',
+  'n_team_members',
+  'level_team_hired_personnel',
+  
+  'sex',
+  'age',
+  'if_leader',
+  'if_deputy_leader',
+  'if_disabled',
+  'if_solo',
+  'if_traverse',
+  'if_ski_descent',
+  'if_parapente_descent',
+  'if_speed_ascent',
+  'race',
+  'level_oxygen_usage',
+  
+  'if_success'
+)
+
+main_data.1 <- main_data %>% select(all_of(features_for_mod.1))
+```
+
+```{r}
+glimpse(main_data.1)
+
+vis_dat(main_data.1 %>% sample_frac(0.1))
+vis_miss(main_data.1 %>% sample_frac(0.1), sort_miss = TRUE)
+
+miss <- miss_summary(main_data.1)
+
+miss
+miss$miss_case_table
+miss$miss_var_table
+miss$miss_var_summary
+miss$miss_case_summary
+```
+
+```{r}
+main_data.1 <- main_data.1 %>% filter(!is.infinite(main_data.1$level_team_hired_personnel))
+main_data.1$if_success <- main_data.1$if_success %>% factor()
+```
+
+### Random Forest Model
+
+Before building the random forest model, let's look at the balance of the labels:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+kable(round(prop.table(table(main_data.1$if_success)) * 100, digits = 1))
+```
+
+The labels are well balanced. Next we split the dataset into a training set and a test set, with 80% and 20% of the data, respectively.
+
+```{r}
+set.seed(123) 
+train_indices <- sample(1:nrow(main_data.1), 0.8 * nrow(main_data.1))
+train_data <- main_data.1[train_indices, ]
+test_data <- main_data.1[-train_indices, ]
+```
+
+The 2 important hyperparameters in the random forest are the number of trees `ntree`, and the number of randomly selected features in each division of the tree `mtry`. we use `ntree = 300`, and then use the `tuneRF` function to tune `mtry` automatically. As shown below, the optimal `mtry` value recommended by `tuneRF` is 7.
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE, results='hide'}
+library(randomForest)
+
+set.seed(123)
+
+best.mtry <- tuneRF(
+  train_data[, -which(names(train_data) == "if_success")],
+  train_data$if_success,
+  ntreeTry = 300,
+  stepFactor = 1.5,
+  improve = 0.01,
+  trace = TRUE,
+  plot = TRUE
+)
+
+index_min_oob <- which.min(best.mtry[, "OOBError"])
+best_mtry_value <- best.mtry[index_min_oob, "mtry"]
+```
+
+The model is built using `ntree = 300` and `mtry =` `r best_mtry_value` and an OOB error rate plot is generated. As shown, the lowest OOB error rate occurs when the number of trees is generated to about 200, indicating that there is no need to use `ntree = 300`.
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+rf <- randomForest(
+  if_success ~ .,
+  data = train_data,
+  ntree = 300,
+  mtry = best_mtry_value,
+  importance = TRUE
+)
+
+error_df <- tibble(
+  error_rate = rf$err.rate[, "OOB"],
+  num_trees = 1:rf$ntree
+)
+
+error_df %>% 
+  ggplot(mapping = aes(x = num_trees, y = error_rate)) +
+    geom_line() +
+    labs(
+      title = "OOB Error Rate over Number of Trees", 
+      x = "Number of Trees", 
+      y = "OOB Error Rate"
+    ) +
+    theme_minimal()
+```
+
+```{r}
+rf <- randomForest(
+  if_success ~ .,
+  data = train_data,
+  ntree = which.min(rf$err.rate[, 1]),
+  mtry = best_mtry_value,
+  importance = TRUE
+)
+
+predictions <- predict(rf, test_data, type = "response")
+
+confusionMatrix <- table(predictions, test_data$if_success)
+
+accuracy <- sum(diag(confusionMatrix)) / sum(confusionMatrix)
+accuracy <- round(accuracy, digits = 4)
+```
+
+The final random forest model is built using `ntree =` `r which.min(rf$err.rate[, 1])` and `mtry =` `r best_mtry_value`. To validate the model performance, prediction is made on the test set and then the following confusion matrix is generated, resulting in an accuracy of `r accuracy`.
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+kable(confusionMatrix)
+```
+
+Evaluate using the more reliable method ROC_AUC. As shown in the plot, the ROC curve of the model is much higher than the completely random classifier and is very close to the upper left corner.
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+library(pROC)
+
+prob_predictions <- predict(rf, test_data, type = "prob")[, 2]
+
+roc_result <- roc(test_data$if_success, prob_predictions)
+
+roc_data <- data.frame(
+  Sensitivity = roc_result$sensitivities,
+  Specificity = roc_result$specificities
+)
+
+ggplot(roc_data, aes(x = 1 - Specificity, y = Sensitivity)) +
+  geom_line(color = "dodgerblue") +
+  geom_line(
+    data = data.frame(x = c(0, 1), y = c(0, 1)), 
+    mapping = aes(x, y), 
+    linetype = "dotted", 
+    color = "grey"
+  ) +
+  labs(title = "ROC Curve", x = "1 - Specificity", y = "Sensitivity") +
+  theme_minimal()
+
+auc_value <- round(as.numeric(auc(roc_result)), digits = 4)
+```
+
+The corresponding AUC value is `r auc_value`. both accuracy and ROC_AUC prove that our random forest model is a reliable and strong classifier.
+
+Next we extract feature importance information from the model and generate the plot. Feature importance here is measured based on the value by which the model accuracy decreases after the features are randomly rearranged, which is more reliable than the default Gini coefficient. As shown in the plot, `level_oxygen_usage` is ranked first in importance, almost twice as high as the second place `n_team_members`.
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+importance_data <- as_tibble(importance(rf), rownames = "Feature")
+
+importance_data %>% 
+  ggplot(mapping = aes(
+    x = reorder(Feature, MeanDecreaseAccuracy), 
+    y = MeanDecreaseAccuracy
+  )) +
+    geom_col(fill = "dodgerblue") +
+    coord_flip() + 
+    labs(
+      title = "Feature Importance", 
+      x = "Features", 
+      y = "Importance (Accuracy Decrease)"
+    ) +
+    theme_minimal()
+```
+
+### Visualization
+
+```{r}
+prob_predictions <- predict(rf, main_data.1, type = "prob")[, 2]
+
+main_data.1 <- main_data.1 %>% 
+  mutate(
+    success_rate = round(prob_predictions, digits = 4),
+    level_oxygen_usage = factor(main_data.1$level_oxygen_usage)
+  )
+```
+
+This box plot shows the relationship between different levels of oxygen use and success rates. There's a general tendency for the success rate to increase as the level of oxygen usage increases, especially between levels 1 and 3 where the success rate increases significantly.
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+main_data.1 %>% 
+  ggplot(mapping = aes(x = level_oxygen_usage, y = success_rate)) +
+    geom_boxplot() +
+    theme_minimal() +
+    labs(
+      title = "Relationship between Oxygen Usage Level and Summit Success Rate",
+      x = "Level of Oxygen Usage",
+      y = "Summit Success Rate"
+    ) 
+```
+
+Curiously, the success rate was much lower at level 4. We have two conjectures. One is that most level 4 climbers suffer from acute altitude sickness. Secondly, some climbers who do not have the physical fitness to reach the summit put all their hopes on oxygen.
+
+We believe the use of oxygen directly leads to an increase in the summit rate [@pollard2006high], therefore we recommend:
+
+-   Climbers who are obsessed with summit success can use oxygen in moderation.
+
+-   Equipment manufacturers can develop lighter oxygen equipment to reduce the burden.
+
+-   Mountaineering schools can offer courses related to oxygen equipment.
+
+-   Researchers studying high altitude activities can consider oxygen as an significant factor.
+
+Focus on the 2nd ranked feature `n_team_members`. This plot shows its direct impact on prediction is less significant than the model importance score.
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+main_data.1 %>% 
+  filter(n_team_members < 60) %>% 
+  ggplot(mapping = aes(x = n_team_members, y = success_rate)) +
+    geom_point(alpha = 0.03) +
+    geom_smooth(se = FALSE, colour = "dodgerblue") +
+    labs(
+      title = "Impact of Team Size on Success Rate",
+      x = "Number of Team Members",
+      y = "Success Rate"
+    ) +
+    theme_minimal()
+```
+
+The Random Forest model may have exploited interactions between `n_team_members` and other features to enhance prediction performance, which is not readily observable in the univariate plot.
+
+This plot shows the relationship between `n_team_members` and success more clearly based on `if_commercial_route`:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+main_data.1 %>% 
+  filter(n_team_members < 60) %>% 
+  ggplot(mapping = aes(x = n_team_members, y = success_rate, colour = if_commercial_route)) +
+    geom_point(alpha = 0.05) +
+    geom_smooth(se = FALSE) +
+    labs(
+      title = "Impact of Team Size on Success Rate Across Commercial Route Usage",
+      x = "Number of Team Members",
+      y = "Success Rate",
+      colour = "Commercial Route Usage"
+    ) +
+    theme_minimal()
+```
+
+-   As the `n_team_members` increases, the success rates on non-commercial routes rise slightly and then gradually decrease. The success rates in the commercial routes follow this trend.
+
+-   Commercial routes have overall higher success rates than non-commercial routes.
+
+-   For the non-commercial route, the success rates reach a high point when the team size is around 2 to 10, and then gradually decreases, while the commercial route peaks at around 29 team members.
+
+This suggests that a moderate team size is more conducive to success for both commercial and non-commercial routes.
+
+This plot is displayed stratified according to the number of camps:
+
+```{r, include=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
+main_data.1 %>% 
+  filter(n_team_members < 60) %>% 
+  filter(n_camps_above_BC <= 10) %>% 
+  ggplot(mapping = aes(x = n_team_members, y = success_rate)) +
+    geom_point(alpha = 0.03) +
+    geom_smooth(se = FALSE, colour = "dodgerblue") +
+    facet_wrap(~ n_camps_above_BC) +
+    labs(
+      title = "Impact of Team Size on Success Rate Across Different Number of Camps",
+      x = "Number of Team Members",
+      y = "Success Rate"
+    ) +
+    theme_minimal()
+```
+
+-   For 4, 5, 6 number of camps, the success rates decrease overall as the team size increases.
+
+-   For 2, 3 number of camps, success fluctuates a lot.
+
+This difference suggests that the optimal team size varies under different climbing routes, which is an important consideration for planning climbing strategies [@houston2009science].
+
+# Standard, Data Governance & Management
+
+## Standard for Data Science Process
+
+We have adopted a systematic data science process to ensure efficiency and standardization from data collection to model deployment. This process includes data preprocessing, exploratory data analysis, modelling & evaluation, as well as business understanding. We follow the CRISP-DM model to ensure the reliability and effectiveness of our project results.
+
+## Data Governance & Management
+
+To ensure compliance with data governance and management, we have established practices concerning data accessibility, security, confidentiality, and potential ethical issues [@tene2021big]:
+
+**Data Accessibility and Security:**
+
+-   All datasets are stored on safe servers, accessible only to authorized project roles.
+
+-   Data access is protected with strong passwords.
+
+-   Regular data backups are performed to prevent data loss or damage.
+
+**Data Confidentiality:**
+
+-   Climbers' personal information, which could involve personal privacy, is not disclosed to the public, ensuring no personal identities are revealed.
+
+-   No details that could identify individuals are disclosed.
+
+**Ethical Considerations:**
+
+-   During the data collection and analysis process, we respect the rights and privacy of all participants.
+
+-   We implement a transparent data usage and processing policy to ensure that all stakeholders have a clear understanding of the purposes and methods of data and project results usage.
+
+# References
