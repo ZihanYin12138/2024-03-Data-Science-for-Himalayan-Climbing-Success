@@ -5,9 +5,9 @@ Developed entirely in **R (tidyverse)**, the project includes data cleaning, mod
 All analyses and figures are generated directly from the `.Rmd` source file, ensuring a **fully reproducible workflow**.
 
 📄 **中文版说明**: [`README.zh.md`](README.zh.md)  
-🧾 **Project Proposal**: [`01_Project_Proposal.pdf`](reports/01_Project_Proposal.pdf)  
-📊 **Project Report (Main)**: [`02_Project_Report.pdf`](reports/02_Project_Report.pdf)  
-🎞 **Project Presentation Slide**: [`03_Project_Presentation_Slide.pdf`](reports/03_Project_Presentation_Slide.pdf)
+🧾 **Project Proposal**: [`01_Project_Proposal.pdf`](03_reports/01_Project_Proposal.pdf)  
+📊 **Project Report (Main)**: [`02_Project_Report.pdf`](03_reports/02_Project_Report.pdf)  
+🎞 **Project Presentation Slide**: [`03_Project_Presentation_Slide.pdf`](03_reports/03_Project_Presentation_Slide.pdf)
 
 ---
 
