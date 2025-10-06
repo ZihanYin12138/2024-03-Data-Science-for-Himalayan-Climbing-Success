@@ -22,23 +22,27 @@ All analyses and figures are generated directly from the `.Rmd` source file, ens
 ## 🧩 Project Structure
 
 ```plaintext
-├── data/
+├── 01_data/
 │   ├── Himalayan_Database.zip       # Original database (contains 4 DBF data tables)
 │   ├── peaks.csv                    # Peak information data
 │   ├── exped.csv                    # Expedition-level data
 │   ├── members.csv                  # Climber-level data
 │   └── refer.csv                    # Reference index data
 │
-├── src/
+├── 02_src/
 │   ├── 01_Project_Report_Source_Code.Rmd     # R Markdown source code (used to knit the report)
 │   └── 02_Project_References.bib             # Bibliography file for citations in the report
 │
-├── reports/
+├── 03_reports/
 │   ├── 01_Project_Proposal.pdf               # Project proposal 
 │   ├── 02_Project_Report.pdf                 # Main project report (generated from .Rmd)
-│   └── 03_Project_Presentation_Slide.pdf     # Presentation slides 
+│   └── 03_Project_Presentation_Slide.pdf     # Presentation slides
 │
-├── pictures/                                # Supplementary images (not used in knitting)
+├── 04_pictures/                              # Supplementary images (not used in knitting)
+│
+├── 05_resources/
+│   ├── 01_Appendix J - SQL Searches.pdf      # Official example SQL search queries for The Himalayan Database
+│   └── 02_Himalayan Database Guide.pdf       # User guide and data access documentation for The Himalayan Database
 │
 ├── LICENSE                                  # MIT License
 │
