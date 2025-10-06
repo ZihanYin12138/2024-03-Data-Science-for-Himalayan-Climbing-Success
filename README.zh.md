@@ -4,9 +4,9 @@
 项目使用 **R 语言（tidyverse）** 实现，包括数据清洗、建模、可视化与结果分析；所有分析均通过 `.Rmd` 源文件自动生成最终报告，实现 **可复现的分析流程**。  
 
 📄 **英文版说明**：[`README.md`](README.md)  
-🧾 **项目提案文件**：[`01_Project_Proposal.pdf`](reports/01_Project_Proposal.pdf)  
-📊 **项目报告（主体）**：[`02_Project_Report.pdf`](reports/02_Project_Report.pdf)  
-🎞 **项目演示文件**：[`03_Project_Presentation_Slide.pdf`](reports/03_Project_Presentation_Slide.pdf)  
+🧾 **项目提案文件**：[`01_Project_Proposal.pdf`](03_reports/01_Project_Proposal.pdf)  
+📊 **项目报告（主体）**：[`02_Project_Report.pdf`](03_reports/02_Project_Report.pdf)  
+🎞 **项目演示文件**：[`03_Project_Presentation_Slide.pdf`](03_reports/03_Project_Presentation_Slide.pdf)  
 
 ---
 
